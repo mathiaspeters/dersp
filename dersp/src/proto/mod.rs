@@ -8,7 +8,9 @@ use crate::{
 };
 use anyhow::{anyhow, ensure};
 use codec::{Decode, Encode, SizeWrapper};
+
 use log::debug;
+use std::fmt::Write;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub mod data;
@@ -18,9 +20,7 @@ pub async fn handle_handshake<RW: AsyncWrite + AsyncRead + Unpin>(
     mut rw: &mut RW,
     sk: &SecretKey,
 ) -> anyhow::Result<(PublicKey, Option<String>)> {
-    finalize_http_phase(&mut rw).await?;
-
-    write_server_key(&mut rw, &sk).await?;
+    finalize_http_phase(&mut rw, sk).await?;
 
     let (pk, meshkey) = read_client_info(&mut rw, &sk).await?;
 
@@ -31,6 +31,7 @@ pub async fn handle_handshake<RW: AsyncWrite + AsyncRead + Unpin>(
 
 async fn finalize_http_phase<RW: AsyncWrite + AsyncRead + Unpin>(
     rw: &mut RW,
+    sk: &SecretKey,
 ) -> anyhow::Result<()> {
     let mut buf = [0u8; UPGRADE_MSG_SIZE];
     let n = rw.read(&mut buf).await?; // TODO: timeout
@@ -45,8 +46,31 @@ async fn finalize_http_phase<RW: AsyncWrite + AsyncRead + Unpin>(
     let body_start = body_start.unwrap();
     let _body = &buf[body_start..];
     // TODO: do something with body?
-    rw.write(b"HTTP/1.1 200 OK\r\n\r\n").await?;
 
+    let pk = sk.public();
+    let server_key = ServerKey::new(pk);
+    let mut body = vec![];
+    server_key.frame().encode(&mut body)?;
+    let mut hex_key = String::new();
+    for b in pk.as_bytes() {
+        write!(hex_key, "{:02x?}", b).unwrap();
+    }
+    let response = vec![
+        "HTTP/1.1 101 Switching Protocols\r\n".as_bytes(),
+        "Upgrade: DERP\r\n".as_bytes(),
+        "Connection: Upgrade\r\n".as_bytes(),
+        "Derp-Version: 2\r\n".as_bytes(),
+        "Derp-Public-Key: ".as_bytes(),
+        hex_key.as_bytes(),
+        "\r\n\r\n".as_bytes(),
+        &body,
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    rw.write_all(&response).await?;
     Ok(())
 }
 
@@ -103,8 +127,7 @@ async fn read_client_info<R: AsyncRead + Unpin>(
 ) -> anyhow::Result<(PublicKey, Option<String>)> {
     // TODO use only one prealocated buffer for read / write
     let mut buf = [0; 1024];
-    reader.read(&mut buf).await?;
-
+    let _ = reader.read(&mut buf).await?;
     let client_info = match FrameType::get_frame_type(&buf) {
         FrameType::ClientInfo => {
             Frame::<ClientInfo>::decode(&mut buf.as_slice()).map_err(|_| anyhow!("Decode error"))

@@ -27,6 +27,7 @@ pub struct DerpService {
     mesh: HashMap<PublicKey, Sender<WriteLoopCommands>>,
     command_sender: Sender<ServiceCommand>,
     meshkey: Option<String>,
+    pub server_key: SecretKey,
 }
 
 impl DerpService {
@@ -79,6 +80,7 @@ impl DerpService {
             mesh: Default::default(),
             command_sender: s.clone(),
             meshkey: meshkey.clone(),
+            server_key: service_sk,
         }));
         spawn(command_loop(r, ret.clone()));
         if let Some(meshkey) = meshkey {
@@ -140,8 +142,8 @@ async fn handle_client(
     service: Arc<RwLock<DerpService>>,
 ) -> anyhow::Result<()> {
     debug!("Got connection from: {peer_addr:?}");
-    let sk = SecretKey::gen();
-    let (client_pk, meshkey) = handle_handshake(&mut socket, &sk).await?;
+    let (client_pk, meshkey) =
+        handle_handshake(&mut socket, &service.read().await.server_key).await?;
 
     service
         .write()
@@ -168,7 +170,7 @@ async fn command_loop(
                 // communication will not put preasure on the services queue. With curren aproach,
                 // sink to serviced quickly will block whole service. After this change, it will
                 // only impact senders wanting to communicate with it.
-                debug!("send packet to {target:?}");
+                debug!("send packet from {source:?} to {target:?}");
                 let sink = match service.read().await.peers_sinks.get(&target) {
                     Some(sink) => sink.clone(),
                     None => {

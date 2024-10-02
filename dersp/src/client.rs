@@ -169,7 +169,10 @@ impl Client {
                         trace!("[{pk:?}] Will send {} bytes to {target}", payload.len());
                         let frame = Frame {
                             frame_type: FrameType::RecvPacket,
-                            inner: SizeWrapper::new(RecvPacket { target, payload }),
+                            inner: SizeWrapper::new(RecvPacket {
+                                target: source,
+                                payload,
+                            }),
                         };
                         frame.encode(&mut writing_buffer)?;
                         w.write_all(&writing_buffer)

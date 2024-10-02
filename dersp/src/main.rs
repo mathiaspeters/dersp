@@ -1,5 +1,9 @@
-use dersp::{Config, service::{DerpService, Service}};
 use clap::Parser;
+use dersp::{
+    crypto::SecretKey,
+    service::{DerpService, Service},
+    Config,
+};
 use log::info;
 use std::sync::Arc;
 use tokio::net::TcpListener;
