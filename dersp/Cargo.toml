@@ -6,29 +6,29 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.77"
-async-trait = "0.1.75"
+anyhow = "1"
+async-trait = "0.1.51"
 base64 = "0.13"
 clap = { version = "4.4.11", features = ["derive"] }
 codec = { path = "../codec"}
-crypto_box = { version = "0.8.2", features = ["std"] }
+crypto_box = { version = "0.9.1", features = ["std"] }
 env_logger = "0.10.1"
-futures-channel = "0.3.30"
-futures-util = "0.3.30"
+futures-channel = "0.3"
+futures-util = "0.3"
 h2 = "0.4.0"
 hex = "0.4.3"
 http = "1.0.0"
 httparse = "1.8.0"
 log = "0.4.20"
 num_enum = "0.7.1"
-rand = "0.8.5"
+rand = "0.8"
 rand_core = "0.6.4"
-rustc-hash = "1.1.0"
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-serde_with = "3.4.0"
+rustc-hash = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_with = "3.7.0"
 strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
-thiserror = "1.0.52"
+thiserror = "1.0"
 tokio = { version = "1.35.1", features = ["full"] }
 tokio-tungstenite = "*"
 
